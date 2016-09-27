@@ -34,6 +34,7 @@ struct Dependency {
     name: String,
     vers: String,
     kind: String,
+    optional: bool,
     target: Option<String>,
     features: Vec<String>,
 }
@@ -90,25 +91,29 @@ impl Package {
     }
 
     pub fn dep(&mut self, name: &str, vers: &str) -> &mut Package {
-        self.full_dep(name, vers, None, "normal", &[])
+        self.full_dep(name, vers, None, "normal", false, &[])
     }
 
     pub fn feature_dep(&mut self,
                        name: &str,
                        vers: &str,
                        features: &[&str]) -> &mut Package {
-        self.full_dep(name, vers, None, "normal", features)
+        self.full_dep(name, vers, None, "normal", false, features)
     }
 
     pub fn target_dep(&mut self,
                       name: &str,
                       vers: &str,
                       target: &str) -> &mut Package {
-        self.full_dep(name, vers, Some(target), "normal", &[])
+        self.full_dep(name, vers, Some(target), "normal", false, &[])
     }
 
     pub fn dev_dep(&mut self, name: &str, vers: &str) -> &mut Package {
-        self.full_dep(name, vers, None, "dev", &[])
+        self.full_dep(name, vers, None, "dev", false, &[])
+    }
+
+    pub fn optional_dep(&mut self, name: &str, vers: &str) -> &mut Package {
+        self.full_dep(name, vers, None, "normal", true, &[])
     }
 
     fn full_dep(&mut self,
@@ -116,11 +121,13 @@ impl Package {
                 vers: &str,
                 target: Option<&str>,
                 kind: &str,
+                optional: bool,
                 features: &[&str]) -> &mut Package {
         self.deps.push(Dependency {
             name: name.to_string(),
             vers: vers.to_string(),
             kind: kind.to_string(),
+            optional: optional,
             target: target.map(|s| s.to_string()),
             features: features.iter().map(|s| s.to_string()).collect(),
         });
@@ -129,6 +136,13 @@ impl Package {
 
     pub fn yanked(&mut self, yanked: bool) -> &mut Package {
         self.yanked = yanked;
+        self
+    }
+
+    pub fn feature(&mut self,
+        name: &str,
+        dependencies: &[&str]) -> &mut Package {
+        self.features.insert(name.to_string(), dependencies.iter().map(|s| s.to_string()).collect());
         self
     }
 
@@ -143,7 +157,7 @@ impl Package {
             map.insert("features".to_string(), dep.features.to_json());
             map.insert("default_features".to_string(), false.to_json());
             map.insert("target".to_string(), dep.target.to_json());
-            map.insert("optional".to_string(), false.to_json());
+            map.insert("optional".to_string(), dep.optional.to_json());
             map.insert("kind".to_string(), dep.kind.to_json());
             map
         }).collect::<Vec<_>>();
